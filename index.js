@@ -33,7 +33,23 @@ async function run() {
    
 
     const sessionCollection = client.db("LearnMore").collection("studySession");
+    const userCollection = client.db("LearnMore").collection("users");
     const paymentCollection = client.db("LearnMore").collection("payment");
+
+
+    // user 
+    app.put('/users', async(req, res) =>{
+      const user= req.body;
+       const query = { email: user.email }
+       const existingUser = await userCollection.findOne(query);
+       if (existingUser) {
+        return res.send({ message: 'user already exists', insertedId: null })
+      }
+      const result =await userCollection.insertOne(user);
+      console.log(result)
+      res.send(result)
+    });
+   
 
     // studySession
     app.get('/studySessions', async(req, res) =>{

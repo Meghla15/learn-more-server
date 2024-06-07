@@ -6,13 +6,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 
 // middleware
-app.use(
-    cors({
-      origin: [
-        "http://localhost:5173", "http://localhost:5174",  ],
-      credentials: true,
-    }) 
-  );
+app.use(cors());
   app.use(express.json());
 
 
@@ -36,20 +30,30 @@ async function run() {
     const userCollection = client.db("LearnMore").collection("users");
     const paymentCollection = client.db("LearnMore").collection("payment");
 
-
-    // user 
-    app.put('/users', async(req, res) =>{
-      const user= req.body;
-       const query = { email: user.email }
-       const existingUser = await userCollection.findOne(query);
-       if (existingUser) {
+    // user API
+    app.get('/users', async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+      console.log(result)
+    });
+    // user save to the database
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email }
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
         return res.send({ message: 'user already exists', insertedId: null })
       }
-      const result =await userCollection.insertOne(user);
-      console.log(result)
-      res.send(result)
+      const result = await userCollection.insertOne(user);
+      res.send(result);
     });
-   
+     
+    app.delete('/users/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await userCollection.deleteOne(query);
+      res.send(result);
+    })
 
     // studySession
     app.get('/studySessions', async(req, res) =>{

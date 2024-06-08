@@ -3,6 +3,7 @@ const app = express();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 
@@ -40,7 +41,8 @@ async function run() {
 
     // middlewares
     const verifyToken = (req, res, next) =>{
-     
+
+    //  token
       if (!req.headers.authorization){
         return res.status(401).send({ message: 'unauthorized access' });
       }
@@ -80,7 +82,7 @@ async function run() {
       res.send({ admin });
     })
 
-    
+
     // user save to the database
     app.post('/users', async (req, res) => {
       const user = req.body;
@@ -125,6 +127,42 @@ async function run() {
         const result = await sessionCollection.findOne(query);
         res.send(result);
       });
+
+       // Save added study session
+    app.post("/studySession", async (req, res) => {
+      const addedSessionData = req.body;
+      const result = await sessionCollection.insertOne(addedSessionData);
+      res.send(result);
+    });
+
+    // Search
+    app.get("/search", async (req, res) => {
+      const search = req.query.search;
+      let query = {
+        name: { $regex: search, $options: "i" },
+      };
+      const result = await userCollection.find(query).toArray();
+      res.send(result);
+    });
+
+      // payment
+      app.post('/create-payment-intent', async(req, res) =>{
+        const {price} = req.body;
+        const amount = parseInt(price * 100);
+        console.log(amount)
+
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: 'usd',
+          payment_method_types: ['card']
+        });
+
+        res.send({
+          clientSecret: paymentIntent.client_secret
+        })
+      })
+
+
       app.post("/payment", async (req, res) => {
         const paymentData = req.body;
         const result = await paymentCollection.insertOne(paymentData);

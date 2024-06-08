@@ -29,6 +29,7 @@ async function run() {
    
 
     const sessionCollection = client.db("LearnMore").collection("studySession");
+    const storeNotesCollection = client.db("LearnMore").collection("storeNotes");
     const userCollection = client.db("LearnMore").collection("users");
     const paymentCollection = client.db("LearnMore").collection("payment");
 
@@ -128,10 +129,23 @@ async function run() {
         res.send(result);
       });
 
+
        // Save added study session
     app.post("/studySession", async (req, res) => {
       const addedSessionData = req.body;
       const result = await sessionCollection.insertOne(addedSessionData);
+      res.send(result);
+    });
+
+    app.get('/storeNotes', async(req, res) =>{
+      const result = await storeNotesCollection.find().toArray();
+      res.send(result);
+  });
+
+       // Save notes
+    app.post("/storeNote", async (req, res) => {
+      const createNotesData = req.body;
+      const result = await storeNotesCollection.insertOne(createNotesData);
       res.send(result);
     });
 

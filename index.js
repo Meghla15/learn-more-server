@@ -137,6 +137,7 @@ async function run() {
       res.send(result);
     });
 
+    // All StoreNotes Data
     app.get('/storeNotes', async(req, res) =>{
       const result = await storeNotesCollection.find().toArray();
       res.send(result);
@@ -146,6 +147,45 @@ async function run() {
     app.post("/storeNote", async (req, res) => {
       const createNotesData = req.body;
       const result = await storeNotesCollection.insertOne(createNotesData);
+      res.send(result);
+      console.log(result)
+    });
+
+      // get all notes posted by a user
+      app.get("/storeNotes/:email", async (req, res) => {
+        const email = req.params.email;
+        const query = { email };
+        const result = await storeNotesCollection.find(query).toArray();
+        res.send(result);
+      });
+      app.get("/storeNote/:id", async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await storeNotesCollection.findOne(query);
+        res.send(result);
+      });
+
+    // update note
+    app.put("/storeNote/:id", async (req, res) => {
+      const id = req.params.id;
+      const updateNote = req.body;
+      const query = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          ...updateNote,
+        },
+      };
+      const result = await storeNotesCollection.updateOne(query, updateDoc, options);
+      res.send(result);
+    });
+
+     // delete note from db
+     app.delete("/storeNote/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const query = { _id: new ObjectId(id) };
+      const result = await storeNotesCollection.deleteOne(query);
       res.send(result);
     });
 

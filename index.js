@@ -8,7 +8,16 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 
 // middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://learn-more-f83e2.web.app",
+    ],
+    credentials: true,
+  })
+);
   app.use(express.json());
 
 
@@ -29,9 +38,11 @@ async function run() {
    
 
     const sessionCollection = client.db("LearnMore").collection("studySession");
+    const bookingsCollection = client.db("LearnMore").collection("bookedSession");
     const storeNotesCollection = client.db("LearnMore").collection("storeNotes");
     const userCollection = client.db("LearnMore").collection("users");
     const paymentCollection = client.db("LearnMore").collection("payment");
+    const materialsCollection = client.db("LearnMore").collection("materials");
 
     //  jwt api
     app.post('/jwt', async(req, res)=>{
@@ -58,7 +69,7 @@ async function run() {
 
     }
 
-      
+     
 
     // user API
     app.get('/users',verifyToken, async (req, res) => {
@@ -84,30 +95,77 @@ async function run() {
     })
 
 
-    // user save to the database
-    app.post('/users', async (req, res) => {
-      const user = req.body;
-      const query = { email: user.email }
-      const existingUser = await userCollection.findOne(query);
-      if (existingUser) {
-        return res.send({ message: 'user already exists', insertedId: null })
-      }
-      const result = await userCollection.insertOne(user);
-      res.send(result);
-    });
-
-    app.patch('/users/admin/:id', async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updatedDoc = {
-        $set: {
-          role: 'admin'
+      // save a user data in db
+      app.put('/users', async (req, res) => {
+        const user = req.body
+        const query = { email: user?.email }
+        const isExist = await userCollection.findOne(query)
+        if (isExist) {
+          if (user.status === 'Requested') {
+            const result = await userCollection.updateOne(query, {
+              $set: { status: user?.status },
+            })
+            return res.send(result)
+          } else {
+            return res.send(isExist)
+          }
         }
+  
+        // save user for the first time
+        const options = { upsert: true }
+        const updateDoc = {
+          $set: {
+            ...user,
+          },
+        }
+        const result = await userCollection.updateOne(query, updateDoc, options)
+        res.send(result)
+      })
+
+
+      // get a user info by email from db
+    app.get('/users/:email', async (req, res) => {
+      const email = req.params.email
+      const result = await userCollection.findOne({ email })
+      res.send(result)
+    })
+
+
+    // user save to the database
+    // app.post('/users', async (req, res) => {
+    //   const user = req.body;
+    //   const query = { email: user.email }
+    //   const existingUser = await userCollection.findOne(query);
+    //   if (existingUser) {
+    //     if(user.status === "Requested"){
+    //       const result = await userCollection.updateOne(query, {
+    //         $set: {status : user?.status}
+    //       })
+    //       return res.send(result)
+    //     } else{
+    //       return res.send({ message: 'user already exists', insertedId: null })
+    //     }
+        
+    //   }
+    //   const result = await userCollection.insertOne(user);
+    //   res.send(result);
+    // });
+
+
+    //update a user role
+    app.patch('/users/update/:email', async (req, res) => {
+      const email = req.params.email
+      const user = req.body
+      const query = { email }
+      const updateDoc = {
+        $set: { ...user, timestamp: Date.now() },
       }
-      const result = await userCollection.updateOne(filter, updatedDoc);
-      res.send(result);
+      console.log(user)
+      const result = await userCollection.updateOne(query, updateDoc)
+      res.send(result)
     })
      
+    // delete
     app.delete('/users/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
@@ -115,12 +173,25 @@ async function run() {
       res.send(result);
     })
 
+    // save a bookedSession
+    app.post('/bookedSession', async (req, res) => {
+      const bookedSessionData = req.body
+      const result = await bookingsCollection.insertOne(bookedSessionData)
+      res.send(result)
+    })
+
+
     // studySession
     app.get('/studySessions', async(req, res) =>{
         const result = await sessionCollection.find().toArray();
         res.send(result);
     });
 
+
+      app.get('/studySessionCount', async(req,res) =>{
+        const count = await sessionCollection.estimatedDocumentCount()
+        res.send({count})
+      })
      // single data
      app.get("/studySession/:id", async (req, res) => {
         const id = req.params.id;
@@ -136,6 +207,43 @@ async function run() {
       const result = await sessionCollection.insertOne(addedSessionData);
       res.send(result);
     });
+
+      // get all session for tutor
+      app.get('/viewAllSession/:email', async (req, res) => {
+        const email = req.params.email
+        let query = { 'tutor.email': email }
+        const result = await sessionCollection.find(query).toArray()
+        res.send(result)
+      })
+
+       // delete studySession from db
+     app.delete("/studySession/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const query = { _id: new ObjectId(id) };
+      const result = await sessionCollection.deleteOne(query);
+      res.send(result);
+    });
+
+     // materials
+     app.get('/materials', async(req, res) =>{
+      const result = await materialsCollection.find().toArray();
+      res.send(result);
+  });
+
+// single data
+app.get("/material/:id", async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: new ObjectId(id) };
+  const result = await materialsCollection.findOne(query);
+  res.send(result);
+});
+  // Save added study session
+  app.post("/material", async (req, res) => {
+    const materialData = req.body;
+    const result = await materialsCollection.insertOne(materialData);
+    res.send(result);
+  });
 
     // All StoreNotes Data
     app.get('/storeNotes', async(req, res) =>{
@@ -202,8 +310,8 @@ async function run() {
       // payment
       app.post('/create-payment-intent', async(req, res) =>{
         const {price} = req.body;
-        const amount = parseInt(price * 100);
-        console.log(amount)
+        const amount = parseInt(price)* 100;
+        console.log(amount, 'amount is comming')
 
         const paymentIntent = await stripe.paymentIntents.create({
           amount: amount,
@@ -216,6 +324,21 @@ async function run() {
         })
       })
 
+// payment put method
+      app.put("/create-payment-intent/:id", async (req, res) => {
+        const id = req.params.id;
+        const updatePayment = req.body;
+        const query = { _id: new ObjectId(id) };
+        const options = { upsert: true };
+        const updateDoc = {
+          $set: {
+            ...updatePayment,
+          },
+        };
+        const result = await paymentCollection.updateOne(query, updateDoc, options);
+        res.send(result);
+      });
+
 
       app.post("/payment", async (req, res) => {
         const paymentData = req.body;
@@ -225,7 +348,7 @@ async function run() {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error

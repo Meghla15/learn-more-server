@@ -72,11 +72,11 @@ async function run() {
     //  
 
     // user API
-    app.get('/users', verifyToken, async (req, res) => {
-      const result = await userCollection.find().toArray();
-      res.send(result);
-      // console.log(result)
-    });
+    // app.get('/users', verifyToken, async (req, res) => {
+    //   const result = await userCollection.find().toArray();
+    //   res.send(result);
+    //   // console.log(result)
+    // });
 
     app.get('/users/admin/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
@@ -175,9 +175,16 @@ async function run() {
     })
 
     // save a bookedSession
-    app.post('/bookedSession', async (req, res) => {
+    app.post('/bookedSessions', async (req, res) => {
       const bookedSessionData = req.body
       const result = await bookingsCollection.insertOne(bookedSessionData)
+      res.send(result)
+    });
+    
+    app.get('/bookedSession/:email', async (req, res) => {
+      const email = req.params.email
+      let query = { 'email': email }
+      const result = await bookingsCollection.find(query).toArray()
       res.send(result)
     })
 
@@ -299,13 +306,23 @@ app.get("/material/:id", async (req, res) => {
     });
 
     // Search
-    app.get("/search", async (req, res) => {
+    app.get("/users",verifyToken, async (req, res) => {
       const search = req.query.search;
-      let query = {
-        name: { $regex: search, $options: "i" },
-      };
+      console.log('search something',search)
+      // let query = {
+      //   name: { $regex: search, $options: "i" },
+      // }; 
+      if(search === ''){
+        const result = await userCollection.find().toArray();
+        console.log('search',result)
+        return res.send(result);
+      }
+      const regex = new RegExp(search, 'i');
+      const query = {name:{ $regex: regex }};
       const result = await userCollection.find(query).toArray();
+      console.log('search',result)
       res.send(result);
+      
     });
 
       // payment

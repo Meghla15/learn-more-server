@@ -69,10 +69,10 @@ async function run() {
 
     }
 
-     
+    //  
 
     // user API
-    app.get('/users',verifyToken, async (req, res) => {
+    app.get('/users', verifyToken, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
       // console.log(result)
@@ -127,6 +127,7 @@ async function run() {
     app.get('/users/:email', async (req, res) => {
       const email = req.params.email
       const result = await userCollection.findOne({ email })
+      console.log(result)
       res.send(result)
     })
 
